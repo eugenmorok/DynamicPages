@@ -80,7 +80,7 @@ class PageListView(ListView):
     paginate_by = 12
 
     def get_queryset(self):
-        qs = Page.published_objects.with_category_deferred().order_by('-published_at')
+        qs = Page.published_objects.with_category_deferred()
 
         category_slug = self.kwargs.get('category_slug')
         if category_slug:
@@ -88,12 +88,27 @@ class PageListView(ListView):
 
         search_q = self.request.GET.get('q', '').strip()
         if search_q:
+            qs = qs.annotate(
+                approved_comments=Count(
+                    'comments',
+                    filter=Q(comments__status='approved', comments__is_spam=False),
+                    distinct=True,
+                ),
+            )
             qs = qs.filter(
                 Q(title__icontains=search_q) |
-                Q(excerpt__icontains=search_q) |
-                Q(default__icontains=search_q)
+                Q(excerpt__icontains=search_q)
             )
-        return qs
+        else:
+            qs = qs.annotate(
+                approved_comments=Count(
+                    'comments',
+                    filter=Q(comments__status='approved', comments__is_spam=False),
+                    distinct=True,
+                ),
+            )
+
+        return qs.order_by('-published_at')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

@@ -154,6 +154,33 @@ else:
             'TIMEOUT': 600,
         }
     }
+    # Redis auto-detection for dev (performance parity with production)
+    _redis_found = False
+    try:
+        import redis
+        _redis_found = True
+        redis_url = os.getenv(
+            'REDIS_URL',
+            'redis://127.0.0.1:6379/1',
+        )
+        client = redis.Redis.from_url(redis_url)
+        if client.ping():  # Verify connection
+            CACHES['default'] = {
+                'BACKEND': 'django_redis.cache.RedisCache',
+                'LOCATION': redis_url,
+                'KEY_PREFIX': 'dynamicpages',
+                'TIMEOUT': 600,
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                },
+            }
+            client.close()
+    except ImportError:
+        pass  # django-redis / redis libraries not installed
+    except Exception:
+        pass  # Connection refused or other error — keep locmem cache
+    finally:
+        del _redis_found
 
 # ============================================================
 # Performance: Query optimization

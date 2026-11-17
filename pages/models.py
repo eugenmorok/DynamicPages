@@ -127,6 +127,9 @@ class Page(models.Model):
             return self.title == other.title and self.category == other.category
         return self.pk == other.pk
 
+    def __hash__(self):
+        return hash(self.pk) if self.pk is not None else super().__hash__()
+
     def get_status_display_badge(self):
         if self.status == self.PUBLISHED:
             return 'success'

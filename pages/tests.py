@@ -353,7 +353,7 @@ class PerformanceTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.category = PageCategory.objects.create(title='PerfCat', slug='perf-cat')
-        now = timezone.now()
+        past = timezone.now() - timezone.timedelta(seconds=2)
         cls.pages = Page.objects.bulk_create([
             Page(
                 title=f'Perf Page {i}',
@@ -361,7 +361,7 @@ class PerformanceTestCase(TestCase):
                 excerpt='Performance',
                 category=cls.category,
                 status=Page.PUBLISHED,
-                published_at=now,
+                published_at=past,
             )
             for i in range(20)
         ])
@@ -377,3 +377,90 @@ class PerformanceTestCase(TestCase):
             )
         self.assertEqual(len(pages), 20)
         self.assertLessEqual(len(captured.captured_queries), 5)
+
+    def test_view_count_bulk_update(self):
+        """Тест bulk update view_count с F выражением — один UPDATE."""
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+        from django.db.models import F
+        from pages.models import Page
+
+        page1, page2 = Page.objects.filter(status=Page.PUBLISHED)[:2]
+        
+        # Считаем запросы до обновления
+        with CaptureQueriesContext(connection) as captured:
+            Page.objects.filter(pk__in=[page1.pk, page2.pk]).update(
+                view_count=F('view_count') + 1
+            )
+        self.assertLessEqual(len(captured.captured_queries), 1)
+        self.assertEqual(len([q for q in captured.captured_queries if 'UPDATE' in q['sql']]), 1)
+
+    def test_select_related_efficiency(self):
+        """select_related исключает N+1 запросы для category и author."""
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+        
+        # С select_related
+        with CaptureQueriesContext(connection) as captured:
+            pages = list(Page.published_objects.with_category_deferred()[:5])
+        self.assertGreater(len(pages), 0)
+        self.assertLessEqual(len(captured.captured_queries), 3)  # 1 for pages + 1 for category join + 1 for prefetch
+
+    def test_prefetch_related_blocks(self):
+        """prefetch_related blocks — один запрос к blocks вместо N."""
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+        from pages.models import PageBlock
+        
+        # Создаём страницу с блоками
+        page = Page.objects.create(
+            title='Block Page', slug='block-page',
+            status=Page.PUBLISHED,
+            published_at=timezone.now() - timezone.timedelta(seconds=2),
+        )
+        try:
+            for i in range(5):
+                PageBlock.objects.create(
+                    page=page, title=f'Block {i}',
+                    default=f'<p>Content {i}</p>',
+                    ordering=i,
+                )
+            
+            with CaptureQueriesContext(connection) as captured:
+                fetched = list(Page.objects.filter(pk=page.pk).select_related('category').prefetch_related('blocks'))
+            
+            blocks_q = [q for q in captured.captured_queries if 'pages_pageblock' in q['sql'].lower()]
+            self.assertLessEqual(len(blocks_q), 2)  # 1 for count check + 1 for select
+            
+            page.blocks.count()
+        finally:
+            Page.objects.filter(pk=page.pk).delete()
+
+    def test_cache_decorator_pattern(self):
+        """Проверка паттерна кэширования view через optimization module."""
+        from pages.optimization import cached_view, cached_property
+        
+        self.assertTrue(callable(cached_view(100)))  # Returns decorator
+        self.assertTrue(callable(cached_view(100)(lambda x: x)))  # Returns wrapper
+
+    def test_optimization_module_imports(self):
+        """Проверка импортов optimization модуля."""
+        from pages import optimization
+        
+        # Проверка ключевых функций
+        self.assertTrue(hasattr(optimization, 'optimize_image_pillow'))
+        self.assertTrue(hasattr(optimization, 'bulk_update_views'))
+        self.assertTrue(hasattr(optimization, 'assert_max_queries'))
+        self.assertTrue(hasattr(optimization, 'get_performance_metrics'))
+        self.assertTrue(hasattr(optimization, 'compress_all_gallery_images'))
+        self.assertTrue(hasattr(optimization, 'batch_create_settings'))
+
+    def test_performance_metrics(self):
+        """Тест получения метрик производительности."""
+        from pages.optimization import get_performance_metrics
+        
+        metrics = get_performance_metrics()
+        self.assertIn('database_engine', metrics)
+        self.assertIn('cache_backend', metrics)
+        self.assertIn('debug_mode', metrics)
+
