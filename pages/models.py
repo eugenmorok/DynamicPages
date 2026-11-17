@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.utils.text import slugify
 from django.utils import timezone
 from django_ckeditor_5.fields import CKEditor5Field
+from .managers import PublishedPageManager, ActiveCommentManager, ActiveMediaGalleryManager
 
 
 class PageCategory(models.Model):
@@ -72,6 +73,10 @@ class Page(models.Model):
     is_featured = models.BooleanField('Рекомендуемая', default=False)
     view_count = models.PositiveIntegerField('Просмотры', default=0)
 
+    # Custom managers
+    objects = models.Manager()  # Full manager
+    published_objects = PublishedPageManager()  # Only published, pre-optimized
+
     class Meta:
         ordering = ['-published_at']
         verbose_name = 'Страница'
@@ -80,6 +85,10 @@ class Page(models.Model):
             models.Index(fields=['title', 'slug']),
             models.Index(fields=['status', 'published_at']),
             models.Index(fields=['category', 'status']),
+            # Composite index for featured pages optimization
+            models.Index(fields=['is_featured', 'published_at'], name='featured_pages_idx'),
+            # Covering index for list views
+            models.Index(fields=['status', 'published_at', 'title', 'slug', 'category_id'], name='page_list_covering'),
         ]
 
     def __str__(self):
@@ -116,6 +125,14 @@ class Page(models.Model):
         if self.status == self.PUBLISHED:
             return 'success'
         return 'secondary'
+
+    def get_approved_comments(self):
+        """Оптимизированная загрузка одобренных комментариев с репликациями."""
+        return Comment.objects.filter(
+            page=self,
+            status='approved',
+            is_spam=False,
+        ).select_related('author').order_by('-created_at')
 
 
 class PageBlock(models.Model):
@@ -165,10 +182,17 @@ class SiteSetting(models.Model):
 
     @classmethod
     def get_value(cls, key, default=''):
-        try:
-            return cls.objects.get(key=key).value
-        except cls.DoesNotExist:
-            return default
+        """Получить значение настройки с кэшированием."""
+        cache_key = f'setting:{key}'
+        from django.core.cache import cache
+        value = cache.get(cache_key)
+        if value is None:
+            try:
+                value = cls.objects.get(key=key).value
+                cache.set(cache_key, value, 300)
+            except cls.DoesNotExist:
+                value = default
+        return value
 
 
 class Comment(models.Model):
@@ -215,6 +239,9 @@ class Comment(models.Model):
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
 
+    objects = models.Manager()  # Full manager (not published-only)
+    active_objects = ActiveCommentManager()  # Pre-optimized approved comments
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Комментарий'
@@ -223,6 +250,8 @@ class Comment(models.Model):
             models.Index(fields=['page', 'status']),
             models.Index(fields=['page', '-created_at']),
             models.Index(fields=['status', '-created_at']),
+            # Covering index for approved comments list
+            models.Index(fields=['page', 'status', 'created_at', 'text', 'name', 'author_id'], name='comment_meta_covering'),
         ]
 
     def __str__(self):
@@ -271,6 +300,11 @@ class MediaGallery(models.Model):
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
     is_active = models.BooleanField('Активна', default=True)
+    thumbnail = models.ImageField('Миниатюра', upload_to='gallery/thumbs/%Y/%m/', blank=True, null=True)
+
+    # Custom managers
+    objects = models.Manager()  # Full manager
+    active_objects = ActiveMediaGalleryManager()  # Pre-optimized active items
 
     class Meta:
         ordering = ['-created_at']
@@ -278,6 +312,7 @@ class MediaGallery(models.Model):
         verbose_name_plural = 'Галерея'
         indexes = [
             models.Index(fields=['is_active', '-created_at']),
+            models.Index(fields=['category', 'is_active', 'created_at'], name='gallery_category_covering'),
         ]
 
     def __str__(self):
@@ -285,4 +320,42 @@ class MediaGallery(models.Model):
 
     def get_absolute_url(self):
         return reverse('pages:gallery_detail', kwargs={'slug': self.pk})
+
+    def save(self, *args, **kwargs):
+        # Удаляем старый thumbnail при обновлении изображения
+        was_existing = self.pk is not None
+        if was_existing:
+            old = MediaGallery.objects.filter(pk=self.pk).only('thumbnail').first()
+            if old and old.thumbnail != self.thumbnail:
+                old.thumbnail.delete(save=False)
+        super().save(*args, **kwargs)
+        self._generate_thumbnail()
+
+    def _generate_thumbnail(self):
+        """Генерация миниатюры для изображения (120x120)."""
+        from django.conf import settings
+        from PIL import Image as PILImage
+        from io import BytesIO
+        from django.core.files.base import ContentFile
+        import os
+
+        if not self.image:
+            return
+
+        try:
+            img = PILImage.open(self.image.file)
+            img.thumbnail((120, 120), PILImage.LANCZOS)
+
+            # Сохранить в PNG
+            buf = BytesIO()
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            img.save(buf, format='JPEG', quality=85)
+            buf.seek(0)
+
+            thumb_name = f'{os.path.splitext(self.image.name)[0]}_thumb.jpg'
+            self.thumbnail.save(thumb_name, ContentFile(buf.read()), save=False)
+            buf.close()
+        except Exception:
+            pass  # Fail gracefully — image still works without thumbnail
 

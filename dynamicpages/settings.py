@@ -116,12 +116,68 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+SITE_URL = os.environ.get('SITE_URL', 'https://example.com')
+
 # ============================================================
-# Security settings (enhanced)
+# Performance: Cache configuration
 # ============================================================
+# Production: Redis/Memcached, Development: locmem
+CACHE_URL = os.environ.get('CACHE_URL', 'locmemcache://')
+if CACHE_URL.startswith('redis'):
+    import redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': CACHE_URL,
+            'KEY_PREFIX': 'dynamicpages',
+            'OPTIONS': {
+                'MAX_ENTRIES': 10000,
+                'CULL_FACTOR': 0,  # Don't cull, just evict LRU
+            },
+            'TIMEOUT': 600,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'dynamicpages-cache',
+            'KEY_PREFIX': 'dynamicpages',
+            'TIMEOUT': 600,
+        }
+    }
+
+# ============================================================
+# Performance: Query optimization
+# ============================================================
+# Enable connection pooling for PostgreSQL in production
+if db_url and db_url.startswith('postgresql'):
+    DATABASES['default']['CONN_MAX_AGE'] = 600
+    DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+    DATABASES['default']['OPTIONS'] = {
+        'init_command': 'SET sql_mode=\'STRICT_TRANS_TABLES\'',
+        'connect_timeout': 10,
+    }
+
+# ============================================================
+# Performance: Compression and static
+# ============================================================
+# WhiteNoise 6.x doesn't have CompressMediaMiddleware — use CompressedManifestStaticFilesStorage instead
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# ============================================================
+# Production security (only applied when DEBUG=False)
+# ============================================================
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = False       # Set True in production with HTTPS
 CSRF_COOKIE_SECURE = False          # Set True in production with HTTPS
 SESSION_COOKIE_HTTPONLY = True
