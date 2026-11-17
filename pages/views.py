@@ -453,7 +453,7 @@ def subscribe(request):
                 messages.info(request, 'Этот email уже подписан.')
         else:
             messages.error(request, 'Введите email.')
-    return redirect('home')
+    return redirect('pages:home')
 
 
 def unsubscribe(request, uid):
@@ -464,7 +464,7 @@ def unsubscribe(request, uid):
         messages.info(request, 'Вы отписались от обновлений.')
     except Exception:
         messages.error(request, 'Не удалось отписаться.')
-    return redirect('home')
+    return redirect('pages:home')
 
 
 # ==================== Gallery ====================
