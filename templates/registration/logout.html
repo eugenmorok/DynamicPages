@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Выход — DynamicPages{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-body-tertiary">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4 text-center">
+                        <i class="fa-solid fa-arrow-right-from-bracket text-muted" style="font-size: 4rem;"></i>
+                        <h4 class="fw-bold mt-3">Вы вышли из системы</h4>
+                        <p class="text-muted mb-4">
+                            Спасибо за посещение! Вы успешно вышли из аккаунта.
+                        </p>
+                        <a href="{% url 'login' %}" class="btn btn-primary py-2 px-4">
+                            <i class="fa-solid fa-arrow-right-to-home"></i> Войти снова
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

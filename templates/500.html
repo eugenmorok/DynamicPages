@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Внутренняя ошибка сервера — {{ site_title|default:'DynamicPages' }}{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-body-tertiary">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-5 text-center">
+                        <i class="fa-solid fa-xmark-circle text-danger" style="font-size: 5rem;"></i>
+                        <h1 class="display-1 fw-bold mt-4">500</h1>
+                        <h4 class="fw-bold mb-3">Внутренняя ошибка сервера</h4>
+                        <p class="text-muted mb-4">
+                            К сожалению, на сервере произошла непредвиденная ошибка. Мы работаем над её исправлением.
+                        </p>
+                        <div class="d-grid gap-3">
+                            <a href="/" class="btn btn-primary btn-lg">
+                                <i class="fa-solid fa-house"></i> На главную
+                            </a>
+                            <a href="javascript:location.reload()" class="btn btn-outline-secondary btn-lg">
+                                <i class="fa-solid fa-arrow-rotate-right"></i> Попробовать снова
+                            </a>
+                        </div>
+                        <p class="text-muted mt-4 small">
+                            Если ошибка повторяется, пожалуйста, сообщите нам:
+                            <a href="mailto:{{ site_description|default:'webmaster@localhost' }}">
+                                {{ site_description|default:'webmaster@localhost' }}
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

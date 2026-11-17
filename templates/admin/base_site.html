@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    #header {
+        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+    }
+    #branding h1 a {
+        color: #fff;
+    }
+    .module h2, .module caption {
+        background: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block footer %}
+{{ block.super }}
+<div class="text-center py-3 bg-light">
+    <small class="text-muted">
+        Powered by <a href="https://www.djangoproject.com/" target="_blank">Django</a> |
+        DynamicPages CMS &copy; {{ now|date:"Y" }}
+    </small>
+</div>
+{% endblock %}

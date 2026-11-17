@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход в систему — DynamicPages{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-body-tertiary">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-4 text-center">
+                            <i class="fa-solid fa-right-to-bracket"></i> Вход в систему
+                        </h4>
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ next|default:'/' }}">
+
+                            <!-- Username -->
+                            <div class="mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fa-solid fa-user"></i> Логин
+                                </label>
+                                {{ form.username }}
+                                {% if form.username.errors %}
+                                <div class="text-danger small">{{ form.username.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Password -->
+                            <div class="mb-3">
+                                <label for="{{ form.password.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fa-solid fa-key"></i> Пароль
+                                </label>
+                                {{ form.password }}
+                                {% if form.password.errors %}
+                                <div class="text-danger small">{{ form.password.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 py-2">
+                                <i class="fa-solid fa-right-to-bracket"></i> Войти
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# Django
+.env
+*.db
+*.sqlite3
+*.sqlite
+*.db.sqlite3
+*.sql
+*.log
+*.log.*
+*.csv
+*.mo
+*.pot
+*.po
+
+# Static & Media
+media/
+staticfiles/
+
+# Static — оставляем исходники, игнорируем только collectstatic
+# static/
+# static/local/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+*.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtualenv
+venv/
+ENV/
+env/
+
+# Django migrations
+# (but not the migrations directory itself!)
+# pages/migrations/*.py
+# !pages/migrations/__init__.py
+!pages/migrations/0001_initial.py
+!pages/migrations/0002_*.py
+!pages/migrations/0003_*.py

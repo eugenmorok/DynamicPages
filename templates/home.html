@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ site_title|default:'DynamicPages' }} — Главная{% endblock %}
+
+{% block meta_desc %}{{ site_description|default:'Динамический сайт на Django с PostgreSQL' }}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="bg-primary text-white py-5">
+    <div class="container py-4">
+        <div class="row align-items-center">
+            <div class="col-lg-7">
+                <h1 class="display-4 fw-bold mb-3">
+                    Добро пожаловать в {{ site_title|default:'DynamicPages' }}!
+                </h1>
+                <p class="lead mb-4">
+                    Современный сайт с динамическим контентом, построенный на Django и PostgreSQL.
+                    Управляйте страницами через удобную панель администратора.
+                </p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="{% url 'pages:page_list' %}" class="btn btn-light btn-lg">
+                        <i class="fa-solid fa-file-lines"></i> Все страницы
+                    </a>
+                    <a href="{% url 'pages:gallery_list' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fa-solid fa-images"></i> Галерея
+                    </a>
+                    {% if not user.is_authenticated %}
+                    <a href="{% url 'login' %}?next={% url 'pages:home' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fa-solid fa-user"></i> Войти
+                    </a>
+                    {% else %}
+                    <a href="{% url 'pages:page_create' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fa-solid fa-plus-circle"></i> Создать страницу
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-5 text-center mt-4 mt-lg-0">
+                <div class="bg-white bg-opacity-10 rounded-4 p-5 d-inline">
+                    <i class="fa-solid fa-bars-staggered" style="font-size: 8rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter Subscription -->
+<section class="py-5" style="background-color: #0d6efd;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 text-center text-white">
+                <h3 class="fw-bold mb-3">
+                    <i class="fa-solid fa-envelope-circle-check"></i> Подпишитесь на обновления
+                </h3>
+                <p class="mb-4 opacity-75">Получайте уведомления о новых материалах на наш email</p>
+                <form action="{% url 'pages:subscribe' %}" method="post" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <input type="email" name="email" class="form-control form-control-lg" 
+                           placeholder="Ваш email" required style="min-width: 280px;">
+                    <button type="submit" class="btn btn-light btn-lg">Подписаться</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories -->
+{% if categories %}
+<section class="py-5">
+    <div class="container">
+        <h2 class="fw-bold mb-4 text-center">
+            <i class="fa-solid fa-folder"></i> Категории
+        </h2>
+        <div class="row g-3">
+            {% for cat in categories %}
+            <div class="col-md-4 col-lg-3">
+                <a href="{% url 'pages:category_detail' cat.slug %}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 hover-card {% if cat.page_count == 0 %}opacity-50{% endif %}">
+                        <div class="card-body text-center">
+                            <i class="fa-solid fa-folder-open text-primary" style="font-size: 2.5rem;"></i>
+                            <h5 class="card-title mt-2">{{ cat.title }}</h5>
+                            <p class="card-text small text-muted">
+                                {{ cat.page_count }} {% if cat.page_count == 1 %}страница{% elif cat.page_count >= 2 and cat.page_count <= 4 %}страницы{% else %}страниц{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Featured Pages -->
+{% if featured_pages %}
+<section class="py-5 bg-body-tertiary">
+    <div class="container">
+        <h2 class="fw-bold mb-4">
+            <i class="fa-solid fa-star text-warning"></i> Рекомендуемые
+        </h2>
+        <div class="row g-4">
+            {% for p in featured_pages %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm border-0">
+                    {% if p.featured_image %}
+                    <img src="{{ p.featured_image.url }}" class="card-img-top" alt="{{ p.title }}" style="height: 160px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                        <i class="fa-solid fa-image text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title"><a href="{{ p.get_absolute_url }}" class="text-decoration-none">{{ p.title }}</a></h5>
+                        <p class="card-text small text-muted">{{ p.excerpt|default:''|truncatewords:20 }}</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 pb-3">
+                        <small class="text-muted">
+                            <i class="fa-solid fa-eye"></i> {{ p.view_count }} &nbsp;
+                            <i class="fa-solid fa-calendar"></i> {{ p.published_at|date:"d.m.Y" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Latest Pages -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="fw-bold mb-4">
+            <i class="fa-solid fa-clock"></i> Последнее
+        </h2>
+        {% if published_pages %}
+        <div class="row g-4">
+            {% for page in published_pages %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card mb-3 shadow-sm border-0">
+                    {% if page.featured_image %}
+                    <img src="{{ page.featured_image.url }}" class="card-img-top" alt="{{ page.title }}" style="height: 180px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                        <i class="fa-solid fa-image text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        {% if page.category %}
+                        <span class="badge bg-primary mb-2">
+                            <a href="{% url 'pages:category_detail' page.category.slug %}" class="text-white text-decoration-none">
+                                {{ page.category.title }}
+                            </a>
+                        </span>
+                        {% endif %}
+                        <h5 class="card-title">
+                            <a href="{{ page.get_absolute_url }}" class="text-decoration-none text-body">
+                                {{ page.title }}
+                            </a>
+                        </h5>
+                        <p class="card-text text-muted">{{ page.excerpt|default:''|truncatewords:30 }}</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <small class="text-muted d-flex justify-content-between">
+                            <span class="d-inline-flex align-items-center">
+                                <i class="fa-solid fa-calendar me-1"></i> {{ page.published_at|date:"d.m.Y" }}
+                            </span>
+                            <span>
+                                <i class="fa-solid fa-eye me-1"></i> {{ page.view_count }}
+                            </span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fa-solid fa-inbox text-muted" style="font-size: 4rem;"></i>
+            <p class="text-muted mt-3">Пока нет опубликованных страниц.</p>
+            {% if user.is_authenticated %}
+            <a href="{% url 'pages:page_create' %}" class="btn btn-primary">
+                <i class="fa-solid fa-plus-circle"></i> Создать первую страницу
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.title }} — DynamicPages{% endblock %}
+{% block meta_desc %}{{ category.description }}{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-body-tertiary">
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'pages:home' %}">Главная</a></li>
+                <li class="breadcrumb-item active">{{ category.title }}</li>
+            </ol>
+        </nav>
+
+        <!-- Category Header -->
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="fa-solid fa-folder-open text-primary" style="font-size: 3rem;"></i>
+                    <div>
+                        <h2 class="fw-bold mb-1">{{ category.title }}</h2>
+                        <p class="text-muted mb-0">{{ category.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pages Grid -->
+        {% if pages %}
+        <div class="row g-4">
+            {% for page in pages %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    {% if page.featured_image %}
+                    <img src="{{ page.featured_image.url }}" class="card-img-top" alt="{{ page.title }}" style="height: 180px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                        <i class="fa-solid fa-image text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <span class="badge bg-primary mb-2">{{ category.title }}</span>
+                        <h5 class="card-title">
+                            <a href="{{ page.get_absolute_url }}" class="text-decoration-none text-body">{{ page.title }}</a>
+                        </h5>
+                        <p class="card-text text-muted small">{{ page.excerpt|default:''|truncatewords:25 }}</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <a href="{{ page.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
+                            Читать <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                        <small class="text-muted ms-3">
+                            <i class="fa-solid fa-calendar"></i> {{ page.published_at|default:page.created_at|date:"d.m.Y" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fa-solid fa-inbox text-muted" style="font-size: 4rem;"></i>
+            <p class="text-muted mt-3">В этой категории пока нет страниц.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

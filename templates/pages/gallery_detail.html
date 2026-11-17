@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ gallery.title }} — DynamicPages{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'pages:home' %}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'pages:gallery_list' %}">Галерея</a></li>
+                <li class="breadcrumb-item active">{{ gallery.title }}</li>
+            </ol>
+        </nav>
+
+        <div class="row g-5">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 overflow-hidden">
+                    {% if gallery.image %}
+                    {% if gallery.image.url %}
+                    <img src="{{ gallery.image.url }}" class="img-fluid w-100" alt="{{ gallery.title }}"
+                         style="max-height: 500px; object-fit: cover;">
+                    {% else %}
+                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 400px;">
+                        <i class="fa-solid fa-image text-muted" style="font-size: 4rem;"></i>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                    <div class="card-body p-4">
+                        <h3 class="fw-bold mb-3">{{ gallery.title }}</h3>
+                        {% if gallery.description %}
+                        <p class="text-muted mb-4">{{ gallery.description }}</p>
+                        {% endif %}
+                        <div class="d-flex gap-3 text-muted small">
+                            <span><i class="fa-solid fa-calendar"></i> {{ gallery.created_at|date:"d F Y" }}</span>
+                            {% if gallery.category %}
+                            <span><i class="fa-solid fa-folder"></i> {{ gallery.category.title }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3">
+                            <i class="fa-solid fa-circle-info"></i> Информация
+                        </h6>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <strong>Создано:</strong><br>
+                                <span class="text-muted">{{ gallery.created_at|date:"d.m.Y H:i" }}</span>
+                            </li>
+                            <li class="mb-2">
+                                <strong>Обновлено:</strong><br>
+                                <span class="text-muted">{{ gallery.updated_at|date:"d.m.Y H:i" }}</span>
+                            </li>
+                            {% if gallery.category %}
+                            <li class="mb-2">
+                                <strong>Категория:</strong><br>
+                                <span class="text-muted">{{ gallery.category.title }}</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Images -->
+        {% if related %}
+        <section class="mt-5 pt-5 border-top">
+            <h5 class="fw-bold mb-4"><i class="fa-solid fa-grid-2"></i> Другие изображения</h5>
+            <div class="row g-3">
+                {% for item in related %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    <a href="{% url 'pages:gallery_detail' item.pk %}" class="text-decoration-none">
+                        {% if item.image %}
+                        <img src="{{ item.image.url }}" class="img-fluid rounded shadow-sm" alt="{{ item.title }}" 
+                             style="height: 120px; width: 100%; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center rounded shadow-sm" 
+                             style="height: 120px;">
+                            <i class="fa-solid fa-image text-muted"></i>
+                        </div>
+                        {% endif %}
+                        <small class="d-block mt-1 text-truncate">{{ item.title }}</small>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

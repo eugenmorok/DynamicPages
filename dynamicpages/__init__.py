@@ -1,0 +1,1 @@
+# DynamicPages Django Project

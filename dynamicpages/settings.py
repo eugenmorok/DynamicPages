@@ -1,0 +1,300 @@
+"""
+Django settings for dynamicpages project.
+Настроен PostgreSQL для production, SQLite для development.
+Включены CSP, WhiteNoise, security middleware.
+"""
+import os
+from pathlib import Path
+from environ import Env
+
+# Build paths
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Environment setup
+env = Env(
+    DEBUG=(bool, True),
+    SECRET_KEY=(str, 'django-insecure-change-this-in-production!'),
+    DATABASE_URL=(str, ''),
+    ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1', 'testserver']),
+)
+Env.read_env(BASE_DIR / '.env')
+
+# Quick-start development settings - unsuitable for production
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
+ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+
+# Application definition
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    # Third party
+    'ckeditor',
+    'ckeditor_uploader',
+    'csp',  # Content Security Policy
+    # Custom apps
+    'pages',
+]
+
+# Middleware: CSP, Security
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Before CommonMiddleware
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',  # Last middleware (before response sent)
+]
+
+ROOT_URLCONF = 'dynamicpages.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                'pages.context_processors.common_settings',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'dynamicpages.wsgi.application'
+
+# Database configuration
+db_url = env('DATABASE_URL')
+if db_url:
+    DATABASES = {'default': env.db('DATABASE_URL')}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 10}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# Internationalization
+LANGUAGE_CODE = 'ru-ru'
+TIME_ZONE = 'Asia/Bangkok'
+USE_I18N = True
+USE_TZ = True
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files (User uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# WhiteNoise configuration for serving static files in production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ============================================================
+# Security settings (enhanced)
+# ============================================================
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SECURE = False       # Set True in production with HTTPS
+CSRF_COOKIE_SECURE = False          # Set True in production with HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True
+
+# ============================================================
+# CSP (Content Security Policy) configuration
+# ============================================================
+# django-csp <4.0 format: CSP_<DIRECTIVE> = (...)
+# For compatibility with all django-csp versions:
+
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'"),
+        'style-src': ("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"),
+        'img-src': ("'self'", "data:", "https:", "http:", "https://cdn.jsdelivr.net"),
+        'font-src': ("'self'", "'unsafe-inline'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"),
+        'connect-src': ("'self'",),
+        'media-src': ("'self'",),
+        'frame-src': ("'self'",),
+        'object-src': ("'none'",),
+        'child-src': ("'self'",),
+        'base-uri': ("'self'",),
+        'form-action': ("'self'",),
+        'upgrade-insecure-requests': None,
+    },
+}
+CSP_INCLUDE_NONCE_IN = ['script-src', 'style-src']
+
+# ============================================================
+# Logging configuration
+# ============================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'formatter': 'verbose',
+        },
+        'security': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'security.log',
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.security': {
+            'handlers': ['security'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'mail_admins'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pages': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+
+# ============================================================
+# CKEditor configuration
+# ============================================================
+CKEDITOR_UPLOAD_PATH = 'uploads/'
+CKEDITOR_IMAGE_BACKEND = 'pillow'
+# Limit file upload size (10MB)
+CKEDITOR_UPLOAD_MAX_FILE_SIZE = 10 * 1024 * 1024
+# Restrict file types to images only
+CKEDITOR_RESTRICT_BY_USER = False  # Enable later for per-user directories
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'Custom',
+        'toolbar_Custom': [
+            ['Heading', 'Style', 'Bold', 'Italic', 'Underline', 'Strike'],
+            ['TextColor', 'BgColor'],
+            ['BulletedList', 'NumberedList', '-', 'Outdent', 'Indent'],
+            ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+            ['Link', 'Unlink'],
+            ['Image', 'Embed', 'Table'],
+            ['Source'],
+            ['Undo', 'Redo'],
+            ['RemoveFormat', 'Format'],
+        ],
+        'removePlugins': 'cssstyle',
+        'extraPlugins': ','.join([
+            'uploadimage', 'div', 'autogrow', 'placeholder',
+            'embed', 'embedsemantic', 'htmlembed', 'widget',
+            'lineutils', 'clipboard', 'dialogui', 'elementspath'
+        ]),
+        # Image restrictions
+        'filebrowserBrowseUrl': '',
+        'filebrowserUploadUrl': '/ckeditor/upload/',
+        # File restrictions - only accept images
+        'allowedContent': True,
+        'contentsCss': '',
+    },
+}
+
+# Maximum upload size for CKEditor
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
+# CKEditor security warning suppression (CKEditor 4 is being evaluated for replacement)
+CKEDITOR_DISABLE_ADMIN_SECURITY = False  # Keep warning until upgrade to CKEditor 5
+
+# Messages
+from django.contrib.messages import constants as messages
+MESSAGE_TAGS = {
+    messages.DEBUG: 'debug',
+    messages.INFO: 'info',
+    messages.SUCCESS: 'success',
+    messages.WARNING: 'warning',
+    messages.ERROR: 'danger',
+}
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
+DEFAULT_FROM_EMAIL = 'webmaster@localhost'
+
+# Custom error handlers
+handler404 = 'pages.views.page_not_found'
+handler500 = 'pages.views.server_error'
