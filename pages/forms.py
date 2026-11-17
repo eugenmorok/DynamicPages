@@ -24,7 +24,7 @@ class PageForm(forms.ModelForm):
 
     class Meta:
         model = Page
-        fields = ['title', 'slug', 'category', 'content', 'excerpt',
+        fields = ['title', 'slug', 'category', 'default', 'excerpt',
                   'meta_title', 'meta_description', 'meta_keywords',
                   'featured_image', 'status', 'is_featured']
         widgets = {
@@ -66,7 +66,7 @@ class PageBlockForm(forms.ModelForm):
 
     class Meta:
         model = PageBlock
-        fields = ['title', 'content', 'image', 'ordering']
+        fields = ['title', 'default', 'image', 'ordering']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'ordering': forms.NumberInput(attrs={'class': 'form-control'}),

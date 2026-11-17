@@ -36,7 +36,7 @@ class PageModelTestCase(TestCase):
             slug='test-page',
             excerpt='Excerpt',
             status=Page.PUBLISHED,
-            published_at=timezone.now(),
+            published_at=timezone.now() - timezone.timedelta(seconds=1),
         )
         Page.objects.create(
             title='Draft Page',
@@ -297,7 +297,7 @@ class APITestCase(TestCase):
         resp = self.client.get(f'/api/v1/pages/{self.page.pk}/comments/')
         self.assertEqual(resp.status_code, 200)
         data = resp.json()['data']
-        self.assertEqual(data['total'], 1)
+        self.assertEqual(data['pagination']['total'], 1)
 
     def test_api_comment_submit(self):
         resp = self.client.post(

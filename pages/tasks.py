@@ -74,7 +74,7 @@ Email: {comment.email or 'Не указан'}
 Текст комментария:
 {comment.text}
 
-Пр permalink: {comment.page.get_absolute_url()}
+Перmalink: {comment.page.get_absolute_url()}
 '''
         send_mail(
             subject=subject,
@@ -127,7 +127,7 @@ def send_subscription_digest(self):
         )
 
     if emails:
-        send_mass_email(emails)
+        send_mass_mail(emails)
         return f'Sent digest to {len(emails)} subscribers'
     return 'No active subscribers'
 
@@ -151,6 +151,7 @@ def analytics_aggregate(start_date, end_date):
     from .models import Page
     from calendar import timegm
     from datetime import datetime
+    from django.db.models import Count, Q
 
     # Страницы с наибольшим числом просмотров
     top_pages = list(

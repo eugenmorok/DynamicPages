@@ -240,15 +240,6 @@ def api_pages(request):
 @_add_cors
 def api_page_detail(request, pk):
     """GET /api/v1/pages/<id>/ — full page detail."""
-    page = get_object_or_404(Page, pk=pk, status=Page.PUBLISHED)
-
-    # Atomic view counter
-    Page.objects.filter(pk=pk).update(view_count=F('view_count') + 1)
-
-    cached = cache.get(f'api_page:{pk}')
-    if cached is not None:
-        return cached
-
     page_obj = Page.published_objects.get(pk=pk)
     blocks_data = [
         {
@@ -368,11 +359,12 @@ def api_comments(request, page_id):
     if not page:
         return _json_response(error={'code': 'not_found', 'detail': 'Page not found'}, status=404)
 
-    comments = list(
-        Comment.objects.filter(page_id=page_id, status='approved')
-        .select_related('page')
-        .order_by('-created_at')
-    )
+    comments_q = Comment.active_objects.filter(
+        page_id=page_id,
+    ).order_by('created_at')
+
+    page_num, per_page = _parse_pagination_params(request)
+    items, pagination = _paginate(comments_q, page_num, per_page)
 
     return _json_response({
         'page': {'id': page.pk, 'title': page.title},
@@ -382,13 +374,13 @@ def api_comments(request, page_id):
                 'name': c.name,
                 'email': c.email,
                 'text': c.text,
+                'author': c.author.get_username() if c.author else None,
                 'created_at': c.created_at.isoformat(),
-                'status': c.status,
                 'is_spam': c.is_spam,
             }
-            for c in comments[:50]
+            for c in items
         ],
-        'total': len(comments),
+        'pagination': pagination,
     })
 
 
@@ -485,7 +477,7 @@ def api_gallery_detail(request, pk):
     """GET /api/v1/gallery/<id>/ — single gallery item."""
     from django.shortcuts import get_object_or_404
     from django.db.models import Sum
-    gallery = get_object_or_404(MediaGallery.objects, pk=pk)
+    gallery = get_object_or_404(MediaGallery.objects.all(), pk=pk)
     
     return _json_response({
         'id': gallery.pk,

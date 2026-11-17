@@ -10,14 +10,16 @@ from .models import Page
 @receiver(post_save, sender=Page)
 def page_saved(sender, instance, **kwargs):
     """Очистить кеш при обновлении страницы."""
-    cache.delete(f'page_{instance.pk}')
-    cache.delete(f'page_list_all')
-    cache.delete(f'page_list_published')
-    cache.clear()  # Временно для безопасности
+    from django.utils.text import slugify
+    page_slug = instance.slug or slugify(instance.title)
+    cache.delete(f'page_detail:{page_slug}')
+    cache.delete(f'related:{page_slug}')
+    cache.delete(f'comments:{page_slug}')
+    cache.delete('featured_pages')
 
 
 @receiver(post_delete, sender=Page)
 def page_deleted(sender, instance, **kwargs):
     """Очистить кеш при удалении страницы."""
-    cache.delete(f'page_{instance.pk}')
-    cache.clear()
+    cache.delete(f'page_list_published')
+    cache.delete('featured_pages')

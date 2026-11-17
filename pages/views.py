@@ -91,7 +91,7 @@ class PageListView(ListView):
             qs = qs.filter(
                 Q(title__icontains=search_q) |
                 Q(excerpt__icontains=search_q) |
-                Q(content__icontains=search_q)
+                Q(default__icontains=search_q)
             )
         return qs
 
@@ -380,7 +380,7 @@ def add_comment(request, slug):
         except Exception:
             pass
         messages.success(request, 'Комментарий добавлен!')
-        return redirect(page.get_absolute_url()) + f'#comment-{comment.pk}'
+        return redirect(f'{page.get_absolute_url()}#comment-{comment.pk}')
     return JsonResponse({'errors': form.errors}, status=400)
 
 
@@ -404,7 +404,7 @@ def add_reply(request, slug, comment_pk):
         reply.save()
         cache.delete(f'comments:{slug}')
         messages.success(request, 'Ответ добавлен!')
-        return redirect(page.get_absolute_url()) + f'#comment-{reply.pk}'
+        return redirect(f'{page.get_absolute_url()}#comment-{reply.pk}')
     return JsonResponse({'errors': form.errors}, status=400)
 
 

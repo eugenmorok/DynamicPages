@@ -1,315 +1,386 @@
-# DynamicPages — Django + PostgreSQL
+# DynamicPages — CMS на Django
 
-Динамический сайт с системой управления страницами, категориями и админ-панелью.
+Динамическая CMS с поддержкой страниц, категорий, блоков контента, комментариев, подписок, медиагалереи и REST API.
 
-## 🚀 Возможности
+## Стек технологий
 
-### Публичные возможности
-- **Динамические страницы** — создание, редактирование, удаление через админ-панель
-- **Категории** — группировка страниц по разделам
-- **SEO-оптимизация** — meta tags (title, description, keywords) для каждой страницы
-- **Поиск** — полнотекстовый поиск по заголовкам, описаниям и содержанию
-- **Редактирование контента** — визуальный редактор CKEditor с загрузкой изображений
-- **Изображения** — загрузка и отображение featured-изображений
-- **Просмотры** — счётчик просмотров для каждой страницы
-- **Поделиться** — кнопки для Telegram, VK, WhatsApp
-- **Поиск по страницам** с фильтрацией по категориям
-- **Блоки контента** — дополнительные секции на странице
-- **Адаптивный дизайн** — работает на мобильных и десктопе
-- **Тёмная тема** — поддержка dark mode Bootstrap 5
+| Компонент | Технология |
+|---|---|
+| Фреймворк | Django 5.2.19 |
+| CMS / Текст | django-ckeditor-5 |
+| Frontend | Bootstrap 5.3.2, Font Awesome 6.7.2 |
+| База данных | PostgreSQL (production) / SQLite (development) |
+| Брокер задач | Celery + Redis |
+| WebSocket | Django Channels + channels_redis |
+| Кэширование | Redis (production) / locmem (development) |
+| Статика | WhiteNoise |
+| Конфигурация | django-environ (.env) |
+| HTTPS / CSP | django-csp |
 
-### Админ-панель
-- Управление страницами с визуальным предпросмотром
-- Управление категориями
-- Настройки сайта (название, описание, контакты, соцсети)
-- Статистика просмотров
-- Быстрый доступ к редактированию
+## Быстрый старт
 
-## 📋 Требование
-
-- Python 3.11+
-- PostgreSQL 14+ (или SQLite для dev)
-- Django 5.0+
-
-## 🛠 Установка
-
-### 1. Клонировать проект
 ```bash
+# 1. Клонирование
+git clone https://github.com/eugenmorok/DynamicPages.git
 cd DynamicPages
-```
 
-### 2. Создать виртуальное окружение
-```bash
-python -m venv venv
-venv\Scripts\activate          # Windows
-# venv/bin/activate            # Linux/Mac
-```
+# 2. Виртуальное окружение
+python -m venv .venv
+.venv\Scripts\activate            # Windows
+source .venv/bin/activate         # Linux/macOS
 
-### 3. Установить зависимости
-```bash
+# 3. Зависимости
 pip install -r requirements.txt
-```
 
-### 4. Настроить окружение
-```bash
-copy .env.example .env         # Windows
-# cp .env.example .env         # Linux/Mac
-```
+# 4. .env (настройка окружения см. ниже)
+cp .env.example .env             # если есть
+nano .env
 
-Открыть `.env` и настроить:
-
-```ini
-DEBUG=False
-SECRET_KEY=ваш-secret-key
-DATABASE_URL=postgresql://user:password@localhost:5432/dynamicpages_db
-ALLOWED_HOSTS=example.com,www.example.com
-```
-
-### 5. Сгенерировать SECRET_KEY
-```bash
-python manage.py shell -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-```
-
-Вставить результат в `.env`
-
-### 6. PostgreSQL (если используется)
-```sql
-CREATE USER dynamicpages WITH PASSWORD 'your_password';
-CREATE DATABASE dynamicpages_db OWNER dynamicpages;
-GRANT ALL PRIVILEGES ON DATABASE dynamicpages_db TO dynamicpages;
-```
-
-### 7. Применить миграции
-```bash
+# 5. Migrations
+python manage.py makemigrations pages
 python manage.py migrate
-```
 
-### 8. Создать суперпользователя
-```bash
+# 6. Суперпользователь
 python manage.py createsuperuser
-```
 
-### 9. Запустить
-```bash
+# 7. Запуск сервера
 python manage.py runserver
+
+# 8. Celery worker (для асинхронных задач)
+celery -A dynamicpages worker -l info
+
+# 9. Celery beat (для периодических задач)
+celery -A dynamicpages beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 ```
 
-Открыть: http://127.0.0.1:8000
+## Настройка окружения (.env)
 
-## 📁 Структура проекта
+```env
+DEBUG=1
+
+# ============================================
+# Database: PostgreSQL production / SQLite dev
+# ============================================
+# PostgreSQL (production):
+DATABASE_URL=postgresql://user:pass@localhost:5432/dynamicpages
+
+# Или SQLite (development — используется автоматически при отсутствии DATABASE_URL):
+# DATABASE_URL=sqlite:///db.sqlite3
+
+# ============================================
+# Redis (caching, Celery broker, Channels)
+# ============================================
+REDIS_URL=redis://localhost:6379/1
+CELERY_BROKER_URL=redis://localhost:6379/1
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+CHANNELS_DEFAULT_REDIS_URL=redis://localhost:6379/1
+
+# ============================================
+# Django
+# ============================================
+SECRET_KEY=your-secret-key-here
+ALLOWED_HOSTS=localhost,127.0.0.1
+```
+
+## Структура проекта
 
 ```
 DynamicPages/
-├── .env.example              # Пример .env
-├── .gitignore               # Исключения Git
-├── manage.py                # Django CLI
-├── requirements.txt         # Зависимости
-├── README.md                # Документация
-├── dynamicpages/            # Конфигурация проекта
-│   ├── __init__.py
-│   ├── settings.py          # Настройки (DB, CKEditor, ...)
-│   ├── urls.py              # Корневые URL-маршруты
-│   ├── wsgi.py             # WSGI-конфиг
-│   └── asgi.py             # ASGI-конфиг
-├── pages/                   # Приложение управления страницами
-│   ├── __init__.py
-│   ├── admin.py             # Админ-панель
-│   ├── apps.py
-│   ├── forms.py             # Формы
-│   ├── migrations/          # Миграции БД
-│   ├── models.py            # Модели (Page, Category, ...)
-│   ├── signals.py           # Сигналы Django
-│   ├── urls.py              # URL-маршруты приложения
-│   └── views.py             # Вьюхи (CRUD, SEO, ...)
-├── templates/               # Шаблоны
-│   ├── base.html            # Базовый шаблон
-│   ├── home.html            # Главная страница
-│   └── pages/
-│       ├── list.html        # Список страниц
-│       ├── detail.html      # Детальная страница
-│       ├── category_detail.html  # Категория
-│       ├── form.html        # Формы (create/edit)
-│       └── confirm_delete.html  # Подтверждение удаления
-├── static/                  # Статические файлы
-│   ├── css/
-│   │   └── style.css        # Пользовательские стили
-│   └── js/                  # JavaScript
-├── media/                   # Загруженные файлы
-│   ├── pages/               # Featured images
-│   └── blocks/              # Images for PageBlock
-└── db.sqlite3               # SQLite для dev (опционально)
+├─ manage.py                        # CLI Django
+├─ dynamicpages/                    # Корневое приложение (settings, urls, wsgi)
+│  ├─ settings.py                   # 421 строка: DB, cache, celery, CSP, channels
+│  ├─ urls.py                       # URL root: admin, ckeditor5, API v1, pages app
+│  ├─ wsgi.py / asgi.py
+├─ pages/                           # Основное приложение
+│  ├─ models.py                     # 7 моделей (Page, PageCategory, PageBlock, etc.)
+│  ├─ managers.py                   # 3 кастомных менеджера
+│  ├─ views.py                      # Функции + классы (CRUD, search, gallery)
+│  ├─ forms.py                      # PageForm, CategoryForm, CommentForm, SearchForm
+│  ├─ urls.py                       # 65 URL-паттернов
+│  ├─ api.py                        # REST API (495 строк)
+│  ├─ tasks.py                      # 4 Celery-задачи
+│  ├─ consumers.py                  # 3 WebSocket consumers
+│  ├─ signals.py                    # post_save / post_delete (кэш)
+│  ├─ admin.py                      # PageAdmin с bulk-actions
+│  ├─ rate_limiting.py              # 154 строки: SimpleRateLimiter + RateLimitMiddleware
+│  ├─ monitoring.py                 # 179 строк: PerformanceMiddleware + metrics
+│  ├─ sitemaps.py                   # 4 sitemap generators
+│  ├─ context_processors.py         # common_settings(request)
+│  ├─ tests.py                      # 31 тест (6 классов)
+│  ├─ migrations/                   # 4 миграции
+│  │  ├─ 0001_initial.py           # PageCategory, SiteSetting, Page, PageBlock
+│  │  ├─ 0002_subscription_comment_mediagallery.py  # Subscription, Comment, MediaGallery
+│  │  ├─ 0003_remove_page_content...  # content → default (CKEditor5Field)
+│  │  └─ 0004_mediagallery_thumbnail... # thumbnail + covering indexes
+│
+├─ templates/
+│  ├─ base.html                     # Bootstrap navbar + footer (149 строк)
+│  ├─ home.html                     # Hero, categories, recent pages
+│  ├─ pages/
+│  │  ├─ detail.html             # Страница: контент, блоки, комментарии
+│  │  ├─ list.html               # Список + поиск + пагинация
+│  │  ├─ form.html               # Создание/редактирование страницы
+│  │  ├─ category_detail.html    # Категория + страницы
+│  │  ├─ gallery.html            # Галерея
+│  │  └─ gallery_detail.html     # Одно изображение
+│  └─ registration/               # Login, logout, password reset
+├─ static/
+├─ Dockerfile
+├─ docker-compose.yml
+├─ requirements.txt
+├─ LICENSE
 ```
 
-## 🔧 URL-маршруты
+## Запуск тестов
 
-| Путь | Описание |
-|------|----------|
-| `/` | Главная страница |
-| `/pages/` | Все страницы (с поиском и пагинацией) |
-| `/page/<slug>/` | Детальная страница |
-| `/category/<slug>/` | Список страниц категории |
-| `/admin/pages/create/` | Создать страницу |
-| `/admin/pages/<slug>/edit/` | Редактировать страницу |
-| `/admin/categories/create/` | Создать категорию |
-| `/api/health/` | Проверка работоспособности API |
-
-## 🗄 Модели
-
-### Page
-- title, slug, content (RichText)
-- excerpt, meta tags
-- featured_image
-- status (Published/Draft)
-- category (ForeignKey)
-- view_count, is_featured
-- author, published_at
-
-### PageCategory
-- title, slug, description
-- is_active, pages count
-
-### PageBlock
-- title, content (RichText), image
-- ordering
-
-### SiteSetting
-- key (site_title, site_email, ...)
-- value (textarea)
-
-## 🔐 Безопасность
-
-- CSRF защита (встроена в Django)
-- Регулярные обновления зависимостей
-- .env с секретами в .gitignore
-- Проверка статуса публикации для публичных страниц
-
-## 📊 Статистика (пример)
-
-```python
-# В Shell Django
->>> from pages.models import Page
->>> Page.objects.count()                     # Всего страниц
->>> Page.objects.filter(status='published').count()  # Опубликованных
->>> Page.objects.filter(view_count__gt=100).count()  # Популярные (>100 просм)
+```bash
+python manage.py test pages --verbosity=2
+python manage.py check
 ```
 
-## 🎨 Кастомизация
+**31 тест** в 6 тестовых классах. Все проходят.
 
-### Цвета
-В `settings.py` или `static/css/style.css`:
-```css
---primary-color: #0d6efd;
---primary-hover: #0b5ed7;
-```
+## URL-структура
 
-### Мета-теги по умолчанию
-В `settings.py`:
-```python
-DEFAULT_SITE_TITLE = 'MySite'
-DEFAULT_SITE_DESCRIPTION = 'Описание'
-DEFAULT_LANG = 'ru-ru'
-```
+### Public-маршруты (pages/urls.py)
 
-### CKEditor
-В `settings.py`:
-```python
-CKEDITOR_CONFIGS = {
+| Method | URL | View | Описание |
+|---|---|---|---|
+| `GET` | `/` | `home` | Главная страница |
+| `GET` | `/pages/` | `PageListView` | Список страниц (Class-based) |
+| `GET` | `/page/<slug:slug>/` | `page_detail` | Страница (с комментариями) |
+| `GET` | `/category/<slug:slug>/` | `category_detail` | Категория + страницы |
+| `GET`, `POST` | `/subscribe/` | `subscribe` | Подписка по email |
+| `GET` | `/unsubscribe/<int:pk>/` | `unsubscribe` | Отписка |
+| `GET` | `/gallery/` | `gallery_list` | Галерея |
+| `GET` | `/gallery/<int:pk>/` | `gallery_detail` | Одно изображение |
+| `GET` | `/sitemap.xml` | `sitemap_xml` | Sitemap |
+| `GET` | `/robots.txt` | `robots_txt` | Robots.txt |
+
+### CRUD (авторизованные, login_required)
+
+| Method | URL | Описание |
+|---|---|---|
+| `GET`, `POST` | `/create/` | Создать страницу |
+| `GET`, `POST` | `/pages/<slug>/edit/` | Редактировать |
+| `GET`, `POST` | `/pages/<slug>/delete/` | Удалить |
+| `GET`, `POST` | `/blocks/create/<slug>/` | Создать блок |
+| `GET`, `POST` | `/blocks/<int:pk>/delete/` | Удалить блок |
+| `GET`, `POST` | `/categories/create/` | Создать категорию |
+| `GET`, `POST` | `/categories/<slug>/edit/` | Редактировать категорию |
+| `GET`, `POST` | `/categories/<slug>/delete/` | Удалить категорию |
+
+### Комментарии
+
+| Method | URL | Описание |
+|---|---|---|
+| `GET`, `POST` | `/page/<slug>/comment/` | Добавить комментарий |
+| `GET`, `POST` | `/page/<slug>/comment/<pk>/reply/` | Ответить на комментарий |
+
+### REST API v1 (dynamicpages/urls.py)
+
+| Method | URL | Описание |
+|---|---|---|
+| `GET` | `/api/health/` | Health check |
+| `GET` | `/api/` | Индекс API (список эндпоинтов) |
+| `GET` | `/api/v1/pages/` | Список страниц |
+| `GET` | `/api/v1/pages/<int:pk>/` | Детали страницы |
+| `GET` | `/api/v1/categories/` | Список категорий |
+| `GET` | `/api/v1/gallery/` | Список галереи |
+| `GET` | `/api/v1/gallery/<int:pk>/` | Детали галереи |
+| `GET`, `GET`, `POST` | `/api/v1/pages/<int:page_id>/comments/` | Получить/отправить комментарии |
+| `GET` | `/api/v1/pages/<int:page_id>/comments/submit/` | Отправить комментарий |
+| `GET` | `/api/v1/admin/stats/` | Статистика для админки |
+
+## Админ-панель
+
+Управлять контентом через `/admin/`:
+
+- **Pages** — создание/редактирование страниц, bulk-approves/rejects комментариев
+- **Categories** — управление категориями
+- **Comments** — модерация с bulk-actions (approve/reject/spam/move_to_spam)
+- **Subscriptions** — управление подписками
+- **PageBlocks** — блоки страниц (inline)
+- **MediaGallery** — медиагалерея
+- **SiteSettings** — настройки сайта (ключ-значение)
+
+## Production-настройки (settings.py)
+
+```env
+# Кэширование (Redis)
+CACHES = {
     'default': {
-        'toolbar': 'Full',
-        'height': 400,
-    },
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': redis_url,
+    }
+}
+
+# Celery (broker + backend)
+CELERY_BROKER_URL = redis_url
+CELERY_RESULT_BACKEND = redis_url
+
+# Channels (channel_layer)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {'hosts': [redis_url]},
+    }
+}
+
+# CSRF trusted origins (Vercel frontend)
+CSRF_TRUSTED_ORIGINS = [
+    'https://dynamicpages-frontend.vercel.app',
+]
+
+# CSP (Content-Security-Policy)
+CSP = {
+    'DIRECTIVES': {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", ...],
+        'style-src': ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", ...],
+        'img-src': ["'self'", "data:", "https:", "..."],
+        # etc.
+    }
 }
 ```
 
-## 🐳 Docker (опционально)
+## Асинхронные задачи (Celery tasks)
 
-### docker-compose.yml
-```yaml
-version: '3.8'
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: dynamicpages_db
-      POSTGRES_USER: dynamicpages
-      POSTGRES_PASSWORD: your_password
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+| Задача | Описание | Повторные попытки |
+|---|---|---|
+| `generate_thumbnail(gallery_id)` | Генерация миниатюры 120x120 (Pillow) | 3 раза, каждые 60с |
+| `send_email_notification(comment_id)` | Email уведомление на site_email с текстом комментария | 5 раз, каждые 30с |
+| `send_subscription_digest()` | Еженедельный дайджест новых страниц для подписчиков | Нет |
+| `cleanup_old_subscriptions()` | Удаление неактивных подписок старше 2 лет | Нет |
+| `analytics_aggregate(start_date, end_date)` | Агрегация статистики (top pages, most commented) | Нет |
 
-  web:
-    build: .
-    command: >
-      gunicorn dynamicpages.wsgi:application
-      --bind 0.0.0.0:8000
-      --workers 4
-    volumes:
-      - .:/app
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
+## Модельная схема (7 моделей)
 
-volumes:
-  pgdata:
-```
+### Page (главная)
 
-### Dockerfile
-```dockerfile
-FROM python:3.11-slim
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-```
+| Поле | Тип | Описание |
+|---|---|---|
+| title | CharField(300) | Заголовок |
+| slug | SlugField(300) | Уникальный URL-адрес |
+| default | CKEditor5Field | Контент (Rich Text) |
+| excerpt | TextField(500) | Краткое описание |
+| meta_title | CharField(200) | SEO meta title |
+| meta_description | TextField(500) | SEO meta description |
+| meta_keywords | CharField(300) | SEO keywords через запятую |
+| featured_image | ImageField | Обложка |
+| status | CharField | published / draft |
+| published_at | DateTimeField | Дата публикации |
+| is_featured | BooleanField | Рекомендуемая |
+| view_count | PositiveIntegerField | Счётчик просмотров |
+| author | ForeignKey(User) | Автор |
+| category | ForeignKey(PageCategory) | Категория |
+| blocks | reverse FK | Блоки страницы |
+| comments | reverse FK | Комментарии |
 
-## 📝 Разработка
+**Кастомный метод:**
+- `increment_view_count()` — атомарный `F('view_count') + 1`
 
-```bash
-# Локальная разработка с SQLite
-python manage.py runserver 0.0.0.0:8000
+**Кастомные менеджеры:**
+- `objects` — стандартный
+- `published_objects` — только опубликованные (`status='published'`, `published_at__lte=now`), с `select_related(category, author)` + `prefetch_related(blocks)`
 
-# Миграции
-python manage.py makemigrations
-python manage.py migrate
+**Кастомные индексы (Meta.indexes):**
+1. `(title, slug)` — составной
+2. `(status, published_at)` — для фильтрации
+3. `(category, status)` — для поиска по категории
+4. `(is_featured, published_at)` — featured pages
+5. `(status, published_at, title, slug, category_id)` — covering index для списка
 
-# Суперпользователь
-python manage.py createsuperuser
+---
 
-# Статика
-python manage.py collectstatic
-```
+### PageCategory
 
-## 🔄 Миграция на PostgreSQL
+| Поле | Тип | Описание |
+|---|---|---|
+| title | CharField(200, db_index) | Название |
+| slug | SlugField(200, unique) | URL-адрес |
+| description | TextField | Описание |
+| is_active | BooleanField(default=True) | Активна |
+| pages | reverse FK | Страницы категории |
 
-1. Установить `psycopg2-binary`
-2. Создать БД и пользователя
-3. Обновить `.env`:
-   ```
-   DATABASE_URL=postgresql://user:pass@host:5432/dbname
-   ```
-4. Выполнить миграции:
-   ```bash
-   python manage.py migrate
-   ```
+---
 
-## 🛡️ Production Checklist
+### PageBlock
 
-- [ ] `DEBUG=False`
-- [ ] `SECRET_KEY` установлен (не дефолтный)
-- [ ] `ALLOWED_HOSTS` настроен
-- [ ] `DATABASE_URL` указывает на PostgreSQL
-- [ ] `gunicorn` установлен
-- [ ] `whitenoise` установлен
-- [ ] SSL сертификат настроен
-- [ ] Static/media файлы обслуживаются через CDN или отдельный веб-сервер
-- [ ] Бэкапы БД настроены
+| Поле | Тип | Описание |
+|---|---|---|
+| title | CharField(200) | Заголовок блока |
+| default | CKEditor5Field | Контент блока |
+| image | ImageField | Изображение блока |
+| ordering | PositiveSmallIntegerField | Порядок сортировки |
+| page | FK(Page) | Родительская страница |
 
-## 📄 Лицензия
+---
 
-MIT
+### Comment
 
-## 👤 Автор
+| Поле | Тип | Описание |
+|---|---|---|
+| text | TextField(5000) | Текст комментария |
+| status | CharField | pending / approved / rejected |
+| is_spam | BooleanField | Спам-флаг |
+| name | CharField(100) | Имя |
+| email | EmailField | Email (не публикуется) |
+| author | FK(User, null=True) | Автор-юзер |
+| page | FK(Page) | Страница |
+| parent | FK(Comment, null=True) | Родительский комментарий (реплаи) |
+| replies | reverse FK | Ответы на комментарий |
 
-Динамический сайт на Django 5.0 + PostgreSQL с CKEditor.
+**Менеджер:**
+- `objects` — стандартный
+- `active_objects` — `status='approved' AND is_spam=False`, с `select_related(author, page)`
+- Алиас: `approved_objects = active_objects` (для обратной совместимости)
+
+**Покрытые индексы:**
+1. `(page, status)` — для списка комментариев
+2. `(page, -created_at)` — для сортировки по дате
+3. `(status, -created_at)` — для модерации
+4. `(page, status, created_at, text, name, author_id)` — covering index для поиска
+---
+
+### Subscription
+
+| Поле | Тип | Описание |
+|---|---|---|
+| email | EmailField(unique, db_index) | Email подписчика |
+| active | BooleanField(default=True) | Активна |
+
+**Индекс:** `(email, active)`
+
+---
+
+### MediaGallery
+
+| Поле | Тип | Описание |
+|---|---|---|
+| title | CharField(200) | Заголовок |
+| description | TextField | Описание |
+| image | ImageField | Изображение gallery/%Y/%m/ |
+| thumbnail | ImageField | Миниатюра gallery/thumbs/%Y/%m/ |
+| is_active | BooleanField(default=True) | Активна |
+| category | FK(PageCategory) | Категория |
+| category.gallery | reverse FK | Галерея категории |
+
+**Менеджер `active_objects`:** `is_active=True`, `select_related(category)`, `order_by(-created_at)`
+
+**Индексы:**
+1. `(is_active, -created_at)` — для списка
+2. `(category, is_active, created_at)` — covering index
+
+---
+
+### SiteSetting
+
+| Поле | Тип | Описание |
+|---|---|---|
+| key | CharField(50, unique) | Ключ (site_title, etc.) |
+| value | TextField | Значение |
+| label | CharField(100) | Human-readable label |
+
+**Choices на ключ:**
+`site_title, site_description, site_email, site_phone, site_address, facebook_url, twitter_url, instagram_url, youtube_url, analytics_id, custom_css`
