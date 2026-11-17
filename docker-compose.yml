@@ -1,0 +1,124 @@
+# ============================================================
+# Этап 5: docker-compose — production-ready stack
+# ============================================================
+# Запуск:
+#   docker compose up -d
+# Завершение:
+#   docker compose down
+# Migrations:
+#   docker compose exec web python manage.py migrate
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ---- Web (Django + Gunicorn) ----
+  web:
+    build: .
+    container_name: dynamicpages-web
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "0"
+      SECRET_KEY: "${SECRET_KEY:-change_me}"
+      DATABASE_URL: "postgresql://django:${DB_PASSWORD:-password}@db:5432/dynamicpages"
+      REDIS_URL: "redis://redis:6379/0"
+      SITE_URL: "${SITE_URL:-https://example.com}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-*}"
+      CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-https://example.com}"
+      EMAIL_HOST: "${EMAIL_HOST:-smtp.gmail.com}"
+      EMAIL_HOST_USER: "${EMAIL_HOST_USER:-}"
+      EMAIL_HOST_PASSWORD: "${EMAIL_HOST_PASSWORD:-}"
+    volumes:
+      - media_data:/srv/app/media
+      - static_data:/srv/app/staticfiles
+    command: >
+      gunicorn dynamicpages.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 4
+      --threads 2
+      --timeout 120
+      --access-logfile -
+      --error-logfile -
+      --log-level info
+  
+  # ---- Celery worker ----
+  worker:
+    build: .
+    container_name: dynamicpages-worker
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DEBUG: "0"
+      SECRET_KEY: "${SECRET_KEY:-change_me}"
+      DATABASE_URL: "postgresql://django:${DB_PASSWORD:-password}@db:5432/dynamicpages"
+      REDIS_URL: "redis://redis:6379/0"
+    command: celery -A dynamicpages worker --loglevel=info --concurrency=4
+    volumes:
+      - media_data:/srv/app/media
+  
+  # ---- Celery beat (scheduler) ----
+  beat:
+    build: .
+    container_name: dynamicpages-beat
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      DEBUG: "0"
+      SECRET_KEY: "${SECRET_KEY:-change_me}"
+      DATABASE_URL: "postgresql://django:${DB_PASSWORD:-password}@db:5432/dynamicpages"
+      REDIS_URL: "redis://redis:6379/0"
+    command: celery -A dynamicpages beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+  
+  # ---- PostgreSQL database ----
+  db:
+    image: postgres:16-alpine
+    container_name: dynamicpages-db
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django -d dynamicpages"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_DB: dynamicpages
+      POSTGRES_USER: django
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-password}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  
+  # ---- Redis cache & broker ----
+  redis:
+    image: redis:7-alpine
+    container_name: dynamicpages-redis
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+# Volumes
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
+  static_data:

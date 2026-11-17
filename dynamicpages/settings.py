@@ -178,8 +178,6 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = False       # Set True in production with HTTPS
-CSRF_COOKIE_SECURE = False          # Set True in production with HTTPS
 SESSION_COOKIE_HTTPONLY = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = True
@@ -347,3 +345,33 @@ DEFAULT_FROM_EMAIL = 'webmaster@localhost'
 # Custom error handlers
 handler404 = 'pages.views.page_not_found'
 handler500 = 'pages.views.server_error'
+
+# ============================================================
+# Celery — asynchronous task queue (optional, needs celery installed)
+# ============================================================
+try:
+    from celery.schedules import crontab
+    HAS_CELERY = True
+except ImportError:
+    HAS_CELERY = False
+
+# Celery defaults (override via env or when celery is installed)
+CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Bangkok'
+
+CELERY_BEAT_SCHEDULE = {}
+if HAS_CELERY:
+    CELERY_BEAT_SCHEDULE = {
+        'send_weekly_digest': {
+            'task': 'pages.tasks.send_subscription_digest',
+            'schedule': crontab(day_of_week=1, hour=10, minute=0),
+        },
+        'cleanup_old_subscriptions': {
+            'task': 'pages.tasks.cleanup_old_subscriptions',
+            'schedule': crontab(day_of_week=0, hour=2, minute=0),
+        },
+    }
