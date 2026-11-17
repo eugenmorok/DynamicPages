@@ -32,9 +32,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Third party
-    'ckeditor',
-    'ckeditor_uploader',
+    # CKEditor 5
+    'ckeditor5',
+    'django_ckeditor_5',
     'csp',  # Content Security Policy
     # Custom apps
     'pages',
@@ -232,49 +232,42 @@ LOGGING = {
 }
 
 # ============================================================
-# CKEditor configuration
+# CKEditor 5 configuration
 # ============================================================
-CKEDITOR_UPLOAD_PATH = 'uploads/'
-CKEDITOR_IMAGE_BACKEND = 'pillow'
-# Limit file upload size (10MB)
-CKEDITOR_UPLOAD_MAX_FILE_SIZE = 10 * 1024 * 1024
-# Restrict file types to images only
-CKEDITOR_RESTRICT_BY_USER = False  # Enable later for per-user directories
-CKEDITOR_CONFIGS = {
+CKEDITOR_5_CONFIGS = {
     'default': {
-        'toolbar': 'Custom',
-        'toolbar_Custom': [
-            ['Heading', 'Style', 'Bold', 'Italic', 'Underline', 'Strike'],
-            ['TextColor', 'BgColor'],
-            ['BulletedList', 'NumberedList', '-', 'Outdent', 'Indent'],
-            ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
-            ['Link', 'Unlink'],
-            ['Image', 'Embed', 'Table'],
-            ['Source'],
-            ['Undo', 'Redo'],
-            ['RemoveFormat', 'Format'],
+        'toolbar': [
+            'heading', '|', 'bold', 'italic', 'link',
+            'bulletedList', 'numberedList', '|',
+            'blockQuote', 'insertImage', 'mediaEmbed', '|',
+            'removeFormat', 'sourceEditing'
         ],
-        'removePlugins': 'cssstyle',
-        'extraPlugins': ','.join([
-            'uploadimage', 'div', 'autogrow', 'placeholder',
-            'embed', 'embedsemantic', 'htmlembed', 'widget',
-            'lineutils', 'clipboard', 'dialogui', 'elementspath'
-        ]),
-        # Image restrictions
-        'filebrowserBrowseUrl': '',
-        'filebrowserUploadUrl': '/ckeditor/upload/',
-        # File restrictions - only accept images
-        'allowedContent': True,
-        'contentsCss': '',
+    },
+    'extends': {
+        'blockToolbar': [
+            'paragraph', 'heading2', 'heading3', '|',
+            'bulletedList', 'numberedList', '|',
+            'blockQuote',
+        ],
+        'toolbar': [
+            'heading', '|', 'bold', 'italic', 'link',
+            'bulletedList', 'numberedList', 'codeBlock', '|',
+            'blockQuote', 'insertImage', 'mediaEmbed', '|',
+            'undo', 'redo', '|',
+            'removeFormat', 'sourceEditing'
+        ],
     },
 }
+CKEDITOR_5_ALLOW_ALL_FILE_TYPES = True
+CKEDITOR_5_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+CKEDITOR_5_UPLOAD_FILE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'pdf', 'doc', 'docx']
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = 'authenticated'
+CKEDITOR_5_UPLOAD_DIR = 'uploads/ckeditor'
+CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = 'ck_editor_5_upload_file'
 
 # Maximum upload size for CKEditor
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
-
-# CKEditor security warning suppression (CKEditor 4 is being evaluated for replacement)
-CKEDITOR_DISABLE_ADMIN_SECURITY = False  # Keep warning until upgrade to CKEditor 5
 
 # Messages
 from django.contrib.messages import constants as messages

@@ -4,7 +4,7 @@ psycopg2-binary>=2.9
 django-environ>=0.11
 
 # Editors
-django-ckeditor>=6.7
+django-ckeditor-5>=0.2.0
 Pillow>=10.0
 pillow-heif>=0.15
 

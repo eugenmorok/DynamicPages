@@ -1,14 +1,13 @@
 from django import forms
 from django.contrib.auth.models import User
-from ckeditor.widgets import CKEditorWidget
-from ckeditor_uploader.widgets import CKEditorUploadingWidget
+from django_ckeditor_5.widgets import CKEditor5Widget
 from .models import Page, PageCategory, PageBlock, SiteSetting
 
 
 class PageForm(forms.ModelForm):
     """Форма для создания/редактирования страниц."""
     content = forms.CharField(
-        widget=CKEditorUploadingWidget(config_name='default'),
+        widget=CKEditor5Widget(config_name='default'),
         required=False,
         label='Содержание',
     )
@@ -60,7 +59,7 @@ class PageCategoryForm(forms.ModelForm):
 class PageBlockForm(forms.ModelForm):
     """Форма для блоков страницы."""
     content = forms.CharField(
-        widget=CKEditorWidget(config_name='default'),
+        widget=CKEditor5Widget(config_name='default'),
         required=False,
         label='Содержание',
     )
