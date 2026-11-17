@@ -26,6 +26,12 @@ class PageCategory(models.Model):
     def get_absolute_url(self):
         return reverse('pages:category_detail', kwargs={'slug': self.slug})
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.template.defaultfilters import slugify
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
 
 class Page(models.Model):
     """Динамическая страница сайта."""
@@ -46,7 +52,7 @@ class Page(models.Model):
         null=True,
         blank=True,
     )
-    content = CKEditor5Field('Содержание', 'default', blank=True)
+    default = CKEditor5Field('Содержание', blank=True)
     excerpt = models.TextField('Краткое описание', blank=True, max_length=500)
     meta_title = models.CharField('Meta Title', max_length=200, blank=True)
     meta_description = models.TextField('Meta Description', blank=True, max_length=500)
@@ -139,7 +145,7 @@ class PageBlock(models.Model):
     """Дополнительный блок контента страницы."""
     page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name='blocks')
     title = models.CharField('Заголовок', max_length=200, blank=True)
-    content = CKEditor5Field('Содержание', 'default', blank=True)
+    default = CKEditor5Field('Содержание', blank=True)
     image = models.ImageField('Изображение', upload_to='blocks/%Y/%m/', blank=True, null=True)
     ordering = models.PositiveSmallIntegerField('Порядок', default=0)
     created_at = models.DateTimeField('Создано', auto_now_add=True)
@@ -241,6 +247,7 @@ class Comment(models.Model):
 
     objects = models.Manager()  # Full manager (not published-only)
     active_objects = ActiveCommentManager()  # Pre-optimized approved comments
+    approved_objects = active_objects  # Alias for backward compatibility
 
     class Meta:
         ordering = ['-created_at']

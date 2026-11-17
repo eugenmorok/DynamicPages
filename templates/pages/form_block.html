@@ -44,9 +44,9 @@
                                 <label for="{{ form.id_content.id_for_label }}" class="form-label fw-bold">
                                     Содержимое
                                 </label>
-                                {{ form.content}}
-                                {% if form.content.errors %}
-                                <div class="invalid-feedback d-block">{{ form.content.errors|join:", " }}</div>
+                                {{ form.default}}
+                                {% if form.default.errors %}
+                                <div class="invalid-feedback d-block">{{ form.default.errors|join:", " }}</div>
                                 {% endif %}
                             </div>
 
@@ -74,3 +74,4 @@
     </div>
 </section>
 {% endblock %}
+

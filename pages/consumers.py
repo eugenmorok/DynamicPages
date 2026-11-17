@@ -1,134 +1,126 @@
 """
-WebSocket consumers для Django Channels.
-Реализация real-time уведомлений для комментариев.
+WebSocket consumers (Django Channels) — real-time обновления.
 """
 import json
-from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from asgiref.sync import sync_to_async
+
+from .models import Comment, Page
 
 
-class CommentWebSocketConsumer(AsyncJsonWebsocketConsumer):
-    """WebSocket consumer для комментариев."""
+User = get_user_model()
+
+
+@database_sync_to_async
+def _get_user(token):
+    """Simple token-based lookup for unauthenticated deployments."""
+    from django.contrib.sessions.backends.db import SessionStore
+    try:
+        session = SessionStore(token)
+        session.load()
+        user_id = session.get('_auth_user_id')
+        if user_id:
+            return User.objects.get(pk=user_id)
+    except Exception:
+        pass
+    return None
+
+
+class CommentWebSocketConsumer(AsyncWebsocketConsumer):
+    """Real-time comment feed — broadcast new approved comments."""
     
     async def connect(self):
-        self.room_group_name = 'comments'
+        self.room_name = 'comments'
+        self.room_group_name = f'channel_layer_{self.room_name}'
         
         # Join room group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        
-        # Send welcome message
-        await self.send_json({
-            'type': 'welcome',
-            'message': 'Connected to comment real-time feed',
-        })
     
     async def disconnect(self, close_code):
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
     
-    # Receive message from JavaScript
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        message_type = data.get('type', '')
-        
-        if message_type == 'subscribe_page':
-            page_pk = data.get('page_id')
-            if page_pk:
-                room = f'comments_page_{page_pk}'
-                await self.channel_layer.group_add(room, self.channel_name)
-                await self.send_json({
-                    'type': 'subscribed',
-                    'page_id': page_pk,
-                })
-        
-        elif message_type == 'unsubscribe_page':
-            page_pk = data.get('page_id')
-            if page_pk:
-                room = f'comments_page_{page_pk}'
-                await self.channel_layer.group_discard(room, self.channel_name)
-    
-    # Receive message from group
-    async def new_comment(self, event):
-        """Отправка нового комментария через WebSocket."""
-        await self.send_json({
+    async def send_comment(self, event):
+        """Receive comment event from broadcast and send to client."""
+        data = event['comment']
+        await self.send(text_data=json.dumps({
             'type': 'new_comment',
-            'comment': event['comment'],
-        })
-    
-    async def comment_reply(self, event):
-        """Отправка ответа на комментарий через WebSocket."""
-        await self.send_json({
-            'type': 'comment_reply',
-            'comment': event['comment'],
-        })
-    
-    async def comment_updated(self, event):
-        """Отправка обновления комментария через WebSocket."""
-        await self.send_json({
-            'type': 'comment_updated',
-            'comment': event['comment'],
-        })
+            'comment': data,
+        }))
 
 
-class PageActivityConsumer(AsyncJsonWebsocketConsumer):
-    """WebSocket consumer для активности страниц."""
+class PageActivityConsumer(AsyncWebsocketConsumer):
+    """Page activity feed — view counts, page updates."""
     
     async def connect(self):
-        self.room_group_name = 'page_activity'
+        page_slug = self.scope['url_route']['kwargs'].get('slug')
+        if page_slug:
+            self.room_name = f'activity:{page_slug}'
+        else:
+            self.room_name = 'activity:all'
         
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
+        self.room_group_name = f'channel_layer_{self.room_name}'
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         
+        # Send cached view count as initial state
+        cached_count = cache.get(f'page_view:{self.room_name}')
+        await self.send(text_data=json.dumps({
+            'type': 'init',
+            'view_count': cached_count or 0,
+        }))
         await self.accept()
     
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
 
-class AdminNotificationConsumer(AsyncJsonWebsocketConsumer):
-    """WebSocket consumer для админ-уведомлений."""
+class AdminNotificationConsumer(AsyncWebsocketConsumer):
+    """Admin notification feed — protected by authentication."""
     
     async def connect(self):
         # Require authentication
-        if not self.scope['user'].is_authenticated:
+        token = self.scope.get('query_string', b'').decode()
+        if not token:
             await self.close(code=4001)
             return
         
-        self.room_group_name = f'admin_{self.scope["user"].pk}'
+        user = await _get_user(token)
+        if not user or not user.is_staff:
+            await self.close(code=4003)
+            return
         
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        
+        self.room_name = 'admin_notifications'
+        self.room_group_name = f'channel_layer_{self.room_name}'
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
     
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+    
+    async def send_notification(self, event):
+        """Receive notification event and forward to client."""
+        await self.send(text_data=json.dumps({
+            'type': 'notification',
+            'message': event['message'],
+            'timestamp': event['timestamp'],
+        }))
 
 
-# ==================== WebSocket URL Configuration ====================
-
+# ============================================================
+# URL routing for WebSocket consumers
+# ============================================================
 from django.urls import path
-from . import consumers
+from .consumers import (
+    CommentWebSocketConsumer,
+    PageActivityConsumer,
+    AdminNotificationConsumer,
+)
 
 websocket_urlpatterns = [
     path('ws/comments/', CommentWebSocketConsumer.as_asgi()),
-    path('ws/page-activity/', PageActivityConsumer.as_asgi()),
+    path('ws/page-activity/<slug:slug>/', PageActivityConsumer.as_asgi()),
     path('ws/admin/notifications/', AdminNotificationConsumer.as_asgi()),
 ]

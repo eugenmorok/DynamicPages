@@ -20,9 +20,10 @@ class PublishedPageManager(models.Manager):
         )
 
     def with_category_deferred(self):
-        """Оптимизированные поля без content (тяжелое поле)."""
+        """Оптимизированные поля без default (тяжелое поле)."""
         return (
             self.get_queryset()
+            .defer('default')
             .only(
                 'id', 'title', 'slug', 'excerpt', 'status',
                 'published_at', 'updated_at', 'is_featured',
@@ -32,7 +33,15 @@ class PublishedPageManager(models.Manager):
 
 
 class ActiveCommentManager(models.Manager):
-    """Менеджер для активных комментариев."""
+    """Менеджер для активных (одобренных) комментариев."""
+
+    # Алиас для обратной совместимости
+    approved_objects = None
+
+    def __init__(self):
+        super().__init__()
+        self.approved_objects = self
+
     def get_queryset(self):
         return (
             super()

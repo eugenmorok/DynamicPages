@@ -12,6 +12,7 @@ from django.utils import timezone
 
 logger = logging.getLogger('performance')
 
+
 # ============================================================
 # Monitoring middleware — timing each request
 # ============================================================
@@ -98,57 +99,12 @@ class CacheMonitorMiddleware:
 
 
 # ============================================================
-# Query optimizer — track slow queries
-# ============================================================
-
-from django.db.backends.base.base import BaseDatabaseWrapper
-from django.db.backends.utils import CursorWrapper
-
-_original_execute = BaseDatabaseWrapper.make_error_callable(None)
-
-
-class QueryMonitor:
-    """Мониторинг SQL запросов в реальном времени."""
-    
-    def __init__(self):
-        self.slow_queries = []
-        self.total_queries = 0
-        self.enabled = os.environ.get('PERFORMANCE_MONITOR', '0') == '1'
-    
-    def check_query(self, sql, duration=None):
-        """Проверка запроса на медленность."""
-        if not self.enabled or not duration:
-            return
-        
-        self.total_queries += 1
-        
-        if duration > QueryMonitor.SLOW_QUERY_THRESHOLD / 1000:
-            import traceback
-            stack = traceback.extract_stack()
-            self.slow_queries.append({
-                'sql': sql[:500],
-                'duration_ms': round(duration * 1000, 2),
-                'stack': self._get_caller(stack),
-            })
-    
-    def _get_caller(self, stack):
-        """Извлечение caller из stack trace."""
-        for frame in reversed(stack):
-            if 'django' in frame.filename:
-                continue
-            if 'pages' in frame.filename:
-                return f'{frame.filename}:{frame.lineno}'
-        return 'unknown'
-
-
-# ============================================================
 # Health check metrics — system wide
 # ============================================================
 
 def get_system_metrics():
     """Получение метрик системы."""
     from django.db import connection
-    from django.core.cache import cache
     import os
     
     metrics = {
@@ -157,7 +113,7 @@ def get_system_metrics():
             'queries_executed': len(connection.queries),
         },
         'cache': {
-            'backend': connection.settings_dict.get('BACKEND', 'locmem'),
+            'backend': settings.CACHES['default']['BACKEND'],
         },
         'system': {
             'debug': settings.DEBUG,
@@ -215,7 +171,6 @@ def health_check():
     
     # Filesystem check
     try:
-        import os
         os.environ.get('DJANGO_SETTINGS_MODULE')
         result['filesystem'] = {'status': 'ok'}
     except Exception as e:

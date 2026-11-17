@@ -81,10 +81,10 @@
 
                     <!-- Content -->
                     <div class="mb-3">
-                        <label for="{{ form.content.id_for_label }}" class="form-label fw-bold">Содержание</label>
-                        {{ form.content }}
-                        {% if form.content.errors %}
-                        <div class="text-danger small">{{ form.content.errors }}</div>
+                        <label for="{{ form.default.id_for_label }}" class="form-label fw-bold">Содержание</label>
+                        {{ form.default }}
+                        {% if form.default.errors %}
+                        <div class="text-danger small">{{ form.default.errors }}</div>
                         {% endif %}
                     </div>
 
@@ -194,3 +194,4 @@
     }, 500);
 </script>
 {% endblock %}
+

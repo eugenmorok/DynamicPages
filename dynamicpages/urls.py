@@ -27,7 +27,7 @@ urlpatterns += [
 api_patterns = [
     # Pages
     path('pages/', api.api_pages, name='api_pages_list'),
-    path('pages/<int:pk>/', api.api_pages_detail, name='api_pages_detail'),
+    path('pages/<int:pk>/', api.api_page_detail, name='api_pages_detail'),
     
     # Categories
     path('categories/', api.api_categories, name='api_categories'),
@@ -37,7 +37,8 @@ api_patterns = [
     path('gallery/<int:pk>/', api.api_gallery_detail, name='api_gallery_detail'),
     
     # Comments
-    path('pages/<int:page_pk>/comments/', api.api_comments, name='api_comments'),
+    path('pages/<int:page_id>/comments/', api.api_comments, name='api_comments'),
+    path('pages/<int:page_id>/comments/submit/', api.api_submit_comment, name='api_submit_comment'),
     
     # Admin stats
     path('admin/stats/', api.api_admin_stats, name='api_admin_stats'),

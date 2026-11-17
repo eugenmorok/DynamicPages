@@ -51,7 +51,7 @@
 
                 <!-- Content -->
                 <div class="content-body mb-5">
-                    {{ page.content|safe }}
+                    {{ page.default|safe }}
                 </div>
 
                 {% if blocks %}
@@ -66,12 +66,12 @@
                             </div>
                             <div class="col-md-6">
                                 <h5>{{ block.title|default:'Без заголовка' }}</h5>
-                                {{ block.content|safe }}
+                                {{ block.default|safe }}
                             </div>
                         </div>
                         {% else %}
                         <h5>{{ block.title|default:'' }}</h5>
-                        {{ block.content|safe }}
+                        {{ block.default|safe }}
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -282,3 +282,4 @@
     </div>
 </section>
 {% endblock %}
+

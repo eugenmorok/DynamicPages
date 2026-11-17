@@ -53,6 +53,9 @@ MIDDLEWARE = [
     'csp.middleware.CSPMiddleware',  # Last middleware (before response sent)
 ]
 
+# Rate limiting for API endpoints
+RATE_LIMIT_MIDDLEWARE_ENABLED = True
+
 ROOT_URLCONF = 'dynamicpages.urls'
 
 TEMPLATES = [
@@ -100,6 +103,11 @@ LANGUAGE_CODE = 'ru-ru'
 TIME_ZONE = 'Asia/Bangkok'
 USE_I18N = True
 USE_TZ = True
+
+# Application version & startup
+VERSION = '1.0.0'
+import time as _time
+STARTUP_TIME = _time.time()
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
@@ -178,9 +186,12 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_HTTPONLY = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_SAVE_EVERY_REQUEST = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+    SESSION_COOKIE_AGE = 86400  # 24 hours (more stable session)
+    SESSION_SAVE_EVERY_REQUEST = False  # Better performance
 
 # ============================================================
 # CSP (Content Security Policy) configuration
@@ -191,15 +202,19 @@ SESSION_SAVE_EVERY_REQUEST = True
 CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {
         'default-src': ("'self'",),
-        'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'"),
-        'style-src': ("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"),
-        'img-src': ("'self'", "data:", "https:", "http:", "https://cdn.jsdelivr.net"),
-        'font-src': ("'self'", "'unsafe-inline'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"),
-        'connect-src': ("'self'",),
-        'media-src': ("'self'",),
-        'frame-src': ("'self'",),
-        'object-src': ("'none'",),
-        'child-src': ("'self'",),
+        'script-src': ("'self'", "'unsafe-inline'",
+                        "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"),
+        'style-src': ("'self'", "'unsafe-inline'",
+                       "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com",
+                       "https://fonts.googleapis.com"),
+        'img-src': ("'self'", "data:", "https:", "http:"),
+        'font-src': ("'self'",
+                      "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"),
+        'connect-src': ("'self'", "https://cdn.jsdelivr.net"),
+        'media-src': ("'self'", "blob:"),
+        'worker-src': ("'self'", "blob:"),
+        'frame-src': ("'none'"),
+        'object-src': ("'none'"),
         'base-uri': ("'self'",),
         'form-action': ("'self'",),
         'upgrade-insecure-requests': None,
@@ -375,3 +390,32 @@ if HAS_CELERY:
             'schedule': crontab(day_of_week=0, hour=2, minute=0),
         },
     }
+
+# ============================================================
+# Celery advanced settings
+# ============================================================
+CELERY_WORKER_CONCURRENCY = int(os.environ.get('CELERY_WORKER_CONCURRENCY', '4'))
+CELERY_WORKER_MAX_TASKS_PER_CHILD = int(os.environ.get('CELERY_MAX_TASKS_PER_CHILD', '1000'))
+CELERY_TASK_ACKNOWLEDGES_LATE = True
+CELERY_TASK_REDELIVER_ON_WORKER_LOST = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {'max_retries': 3, 'interval_start': 0, 'interval_step': 0.2}
+
+# ============================================================
+# Channels — WebSocket channel layer (Redis backend)
+# ============================================================
+ASGI_CHANNELS_ENABLED = True
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [os.environ.get('REDIS_URL', 'redis://localhost:6379/1')],
+            'capacity': 1500,  # max queue per channel
+            'expiry_length': 10,  # seconds messages stay in queue
+        },
+    },
+}
+
+# ============================================================
+# CSRF & CORS
+# ============================================================
+CSRF_TRUSTED_ORIGINS = env('CSRF_TRUSTED_ORIGINS', list, [])

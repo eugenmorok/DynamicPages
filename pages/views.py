@@ -137,7 +137,7 @@ def page_detail(request, slug):
         related = q.order_by('-published_at')[:4]
         cache.set(f'related:{slug}', related, 1800)
 
-    blocks = PageBlock.objects.filter(page=page).defer('content')[:5]
+    blocks = PageBlock.objects.filter(page=page).defer('default')[:5]
     meta_title = page.meta_title or page.title
     meta_desc = page.meta_description or page.excerpt or ''
 
